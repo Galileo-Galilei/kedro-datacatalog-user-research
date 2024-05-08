@@ -70,3 +70,58 @@ When they have a lot of catalog entries which sis common because they tend to st
 
 How credentials works are hard to grasp, but this is out of scope here.  
 
+## Use case 2 : DataCatalog for plugin
+
+
+#### Why use ``catalog._datasets`` over ``catalog._datasets ``? 
+
+Answer : Because I need to override the catalog on the fly and Frozen datasets are to limited. Don't know the difference between ``catalog._datasets[name]`` and ``catalog._get_dataset[name]``
+
+
+- Loop over all datasets inside a hook : see: https://github.com/Galileo-Galilei/kedro-mlflow/blob/64b8e94e1dafa02d979e7753dab9b9dfd4d7341c/kedro_mlflow/framework/hooks/mlflow_hook.py#L156
+
+- override dataset in the catalog:  https://github.com/Galileo-Galilei/kedro-mlflow/blob/64b8e94e1dafa02d979e7753dab9b9dfd4d7341c/kedro_mlflow/framework/hooks/mlflow_hook.py#L162
+
+- https://github.com/Galileo-Galilei/kedro-mlflow/blob/64b8e94e1dafa02d979e7753dab9b9dfd4d7341c/kedro_mlflow/io/catalog/switch_catalog_logging.py#L1-L4
+
+
+#### Why use catalog.exists? 
+
+This is a hack to force materilaization with dataset factory pattern : 
+https://github.com/Galileo-Galilei/kedro-mlflow/blob/64b8e94e1dafa02d979e7753dab9b9dfd4d7341c/kedro_mlflow/framework/hooks/mlflow_hook.py#L364-L365
+
+#### Extra comment on versioned datasets
+
+Note exactly about the catalog but rather the datasets: 
+ https://github.com/Galileo-Galilei/kedro-mlflow/blob/64b8e94e1dafa02d979e7753dab9b9dfd4d7341c/kedro_mlflow/io/artifacts/mlflow_artifact_dataset.py#L51-L53
+
+
+#### Catalog.add and catalog.add_feed_dict
+
+Create a catalog programatically: 
+
+https://github.com/Galileo-Galilei/kedro-mlflow/blob/64b8e94e1dafa02d979e7753dab9b9dfd4d7341c/kedro_mlflow/mlflow/kedro_pipeline_model.py#L108C1-L116C84
+
+#### catalog.shallow_copy()
+
+Mostly to avoid interaction when refilling a catalog based on a reference 
+https://github.com/Galileo-Galilei/kedro-mlflow/blob/64b8e94e1dafa02d979e7753dab9b9dfd4d7341c/kedro_mlflow/mlflow/kedro_pipeline_model.py#L194C47-L194C62
+
+
+#### Serialization
+
+Serialization is an issue because I often pickle a catalog (mostly as part of a mlflow model), see https://github.com/Galileo-Galilei/kedro-mlflow/blob/64b8e94e1dafa02d979e7753dab9b9dfd4d7341c/kedro_mlflow/mlflow/kedro_pipeline_model.py#L54. If *any* attribute change, I won't be able to load the model with a newer kedro version., e.g.:  
+
+```python
+# pseudo code
+pickle.dumps(catalog)
+pickle.loads(catalog) # this will fail if I reload with a newer kedro version and any attributes (even private) has changed. This breaks much more often that we should expect. 
+```
+
+It would be much more robust to be able to do this: 
+
+```python
+# pseudo code
+catalog.serialize("path/catalog.yml") # name TBD: serialize? to_config? to_yaml? to_json? to_dict? 
+pickle.deserialize(catalog) # much more robust since it is not stored as python object
+```
