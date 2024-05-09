@@ -123,5 +123,5 @@ It would be much more robust to be able to do this:
 ```python
 # pseudo code
 catalog.serialize("path/catalog.yml") # name TBD: serialize? to_config? to_yaml? to_json? to_dict? 
-pickle.deserialize(catalog) # much more robust since it is not stored as python object
+catalog.deserialize(catalog) # much more robust since it is not stored as python object -> maybe catalog.from_config? 
 ```
